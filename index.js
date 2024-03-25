@@ -11,7 +11,9 @@ dotenv.config();
 // Initialize OpenAI
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// Async function to create or get existing assistant
+let assistantDetails = {};
+
+// Async function to  get existing assistant
 async function getOrCreateAssistant() {
   const assistantFilePath = "./assistant.json";
   let assistantDetails;
@@ -21,42 +23,24 @@ async function getOrCreateAssistant() {
     const assistantData = await fsPromises.readFile(assistantFilePath, "utf8");
     assistantDetails = JSON.parse(assistantData);
   } catch (error) {
-    // If file does not exist, create a new assistant
-    const assistantConfig = {
-      name: "Helpful Assistant",
-      instructions:
-        "I am helpfull assistant, you can chat with me, ask me questions, and upload files for me to use in the future. I can help you with code interpretation and file retrieval.",
-      tools: [
-        { type: "code_interpreter" },
-        {
-          type: "function",
-          function: {
-            name: "sendTestWebhook",
-            description:
-              "Send a test webhook to Webhook.site with user details",
-            parameters: {
-              type: "object",
-              properties: {
-                userDetails: {
-                  type: "object",
-                  properties: {
-                    name: { type: "string" },
-                    phoneNumber: { type: "string" },
-                    // Add other user details as needed
-                  },
-                  required: ["name", "phoneNumber"],
-                },
-              },
-              required: ["userDetails"],
-            },
-          },
-        },
-      ],
-      model: "gpt-4-1106-preview",
-    };
+    //Retrive assistant
+    const assistant = await openai.beta.assistants.retrieve(
+      process.env.ASSISTANT_ID,
+      "name",
+      "model",
+      "instructions",
+      "tools"
+    );
 
-    const assistant = await openai.beta.assistants.create(assistantConfig);
-    assistantDetails = { assistantId: assistant.id, ...assistantConfig };
+    assistantDetails = {
+      assistantId: assistant.id,
+      assistantName: assistant.name,
+      assistantInstructions: assistant.instructions,
+      assistantModel: assistant.model,
+      assistantTools: assistant.tools,
+      response_format: { type: "json_object" },
+    };
+    console.log(assistantDetails);
 
     // Save the assistant details to assistant.json
     await fsPromises.writeFile(
@@ -127,6 +111,7 @@ const chatWithAssistant = async (question, userDetails) => {
         .pop();
 
       if (lastMessageForRun) {
+        // Log the response from the assistant
         console.log({ response: lastMessageForRun.content[0].text.value });
       } else {
         console.log("No response received from the assistant.");
