@@ -1,8 +1,9 @@
+import express from "express";
+import bodyParser from "body-parser";
 import fs from "fs";
 import { promises as fsPromises } from "fs";
 import OpenAI from "openai";
 import dotenv from "dotenv";
-import readline from "readline";
 import { sendTestWebhook } from "./get_webhook.js";
 
 // Load environment variables from .env file
@@ -11,7 +12,33 @@ dotenv.config();
 // Initialize OpenAI
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-let assistantDetails = {};
+const app = express();
+const port = 3000;
+
+// Middleware to parse JSON bodies
+app.use(bodyParser.json());
+
+app.use(express.static("public"));
+app.use(express.urlencoded({ extended: true }));
+
+app.get("/", (req, res) => {
+  res.sendFile(__dirname + "/public/index.html");
+});
+
+// Route to handle chat requests
+app.post("/chat", async (req, res) => {
+  const { question, userDetails } = req.body;
+
+  console.log("User Details: ", question, userDetails);
+
+  try {
+    const { response } = await chatWithAssistant(question, userDetails); // Destructure the response object
+    res.json({ response }); // Send the response directly
+    console.log("Response: ", response);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Async function to  get existing assistant
 async function getOrCreateAssistant() {
@@ -40,7 +67,6 @@ async function getOrCreateAssistant() {
       assistantTools: assistant.tools,
       response_format: { type: "json_object" },
     };
-    console.log(assistantDetails);
 
     // Save the assistant details to assistant.json
     await fsPromises.writeFile(
@@ -52,27 +78,28 @@ async function getOrCreateAssistant() {
   return assistantDetails;
 }
 
-const chatWithAssistant = async (question, userDetails) => {
+async function chatWithAssistant(question, userDetails) {
   try {
-    // Get or create an assistant
     const assistantDetails = await getOrCreateAssistant();
 
-    // Create a thread using the assistantId
     const thread = await openai.beta.threads.create();
 
-    // Pass in the user question into the existing thread
     await openai.beta.threads.messages.create(thread.id, {
       role: "user",
       content: question,
     });
 
-    // Create a run
     const run = await openai.beta.threads.runs.create(thread.id, {
       assistant_id: assistantDetails.assistantId,
     });
 
-    // Fetch run-status
     let runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+
+    // Polling for run status
+    while (runStatus.status === "in_progress") {
+      await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait for 2 seconds before checking again
+      runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+    }
 
     // Check if the run requires action (e.g., calling a function)
     if (runStatus.status === "requires_action") {
@@ -89,7 +116,6 @@ const chatWithAssistant = async (question, userDetails) => {
             output: output,
           });
         }
-        // Handle other functions similarly
       }
 
       // Submit the tool outputs
@@ -97,8 +123,11 @@ const chatWithAssistant = async (question, userDetails) => {
         tool_outputs: toolOutputs,
       });
 
-      // Update the run status after submitting the outputs
-      runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+      // Wait for the run to be completed after submitting the tool outputs
+      do {
+        await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait for 2 seconds before checking again
+        runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+      } while (runStatus.status === "in_progress");
     }
 
     // Handle the final assistant response
@@ -111,49 +140,21 @@ const chatWithAssistant = async (question, userDetails) => {
         .pop();
 
       if (lastMessageForRun) {
-        // Log the response from the assistant
-        console.log({ response: lastMessageForRun.content[0].text.value });
+        return { response: lastMessageForRun.content[0].text.value };
       } else {
         console.log("No response received from the assistant.");
+        return { response: "No response received from the assistant." };
       }
+    } else {
+      return { response: "Assistant did not complete the request." };
     }
   } catch (error) {
     console.error(error);
+    return { response: "An error occurred while processing your request." };
   }
-};
+}
 
-const getUserDetails = () => {
-  return new Promise((resolve) => {
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout,
-    });
-
-    const userDetails = {};
-
-    rl.question("Enter your name: ", (name) => {
-      userDetails.name = name;
-
-      rl.question("Enter your phone number: ", (phoneNumber) => {
-        userDetails.phoneNumber = phoneNumber;
-        rl.close();
-        resolve(userDetails);
-      });
-    });
-  });
-};
-
-const main = async () => {
-  const userDetails = await getUserDetails();
-  console.log("User details:", userDetails);
-
-  // Chat with assistant and request human help
-  await chatWithAssistant("I need human help", userDetails);
-  console.log("Chat with assistant completed.");
-
-  // Send a test webhook with user details
-  await sendTestWebhook(userDetails);
-  console.log("Test webhook sent successfully.");
-};
-
-main();
+// Start the server
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
+});

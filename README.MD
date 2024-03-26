@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This tutorial will guide you through creating a chatbot using the OpenAI Assistants API. The chatbot can send a webhook with user details like name and phone number when requested. This is a basic example to demonstrate the functionality of the OpenAI Assistants API.
+The chatbot can send a webhook with user details like name and phone number when requested. This is a basic example to demonstrate the functionality of the OpenAI Assistants API.
 
 ## Prerequisites
 
@@ -40,53 +40,34 @@ This file contains the function to send a webhook with user details.
 The `index.js` File
 This file contains the main logic of the chatbot and the OpenAI assistant.
 
-### Assistant Confrigration
+Endpoint
+The main endpoint for interacting with the chatbot is /chat.
 
-You can set `Assistant Name`,`Instruction` and also `Tools`(Function Calling here):
+Request Method
+`POST`
+`Request URL` yourdomain.com/chat
+`Request Body`
+The request body should be a JSON object containing the following fields:
+
+`question`: The question to ask the chatbot.
+`userDetails`: An object containing user details. For example,
+`{ "name": "John Doe", "phoneNumber": "1234567890" }`.
+
+Example request body:
 
 ```
-const assistantConfig = {
-      name: "Helpful Assistant",
-      instructions:
-        "I am helpfull assistant, you can chat with me, ask me questions, and upload files for me to use in the future. I can help you with code interpretation and file retrieval.",
-      tools: [
-        { type: "retrieval" },
-        { type: "code_interpreter" },
-        {
-          function: {
-            name: "sendTestWebhook",
-            description:
-              "Send a test webhook to Webhook.site with user details",
-            parameters: {
-              type: "object",
-              properties: {
-                userDetails: {
-                  type: "object",
-                  properties: {
-                    name: { type: "string" },
-                    phoneNumber: { type: "string" },
-                    // Add other user details as needed
-                  },
-                  required: ["name", "phoneNumber"],
-                },
-              },
-              required: ["userDetails"],
-            },
-          },
-        },
-        {
-          type: "function",
-          function: {
-            name: "sendTestEmail",
-            description: "Send a test email using Ethereal SMTP",
-            parameters: {
-              type: "object",
-              properties: {},
-              required: [],
-            },
-          },
-        },
-      ],
-      model: "gpt-4-1106-preview",
-    };
+{"question":"I need human help","userDetails":{"name":"John Doe","phoneNumber":"1234567890"}}
+
+```
+
+Response
+The response will be a JSON object containing the following field:
+
+response: The response from the chatbot.
+Example response:
+
+```
+{
+  "response": "Please provide your name and phone...."
+}
 ```
