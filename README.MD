@@ -1,14 +1,11 @@
 # Chatbot with OpenAI Assistants API & Function Calling
 
-## Introduction
+This project showcases a chatbot integrated with the OpenAI Assistants API, capable of engaging in conversations and executing specific actions based on user requests. One notable feature is its ability to send a webhook containing user details, such as name and phone number, when requested by the user. This functionality demonstrates the chatbot's potential in real-world applications, particularly in customer service and support scenarios where collecting user information is crucial.
 
-The chatbot can send a webhook with user details like name and phone number when requested. This is a basic example to demonstrate the functionality of the OpenAI Assistants API.
-
-## Prerequisites
-
-Node.js installed on your machine.
+The chatbot is built using Node.js and Express, with the OpenAI API providing the intelligence for natural language understanding and response generation. The webhook functionality is implemented using the fetch API, allowing the chatbot to communicate with external services.
 An OpenAI API key. You can get one by signing up at OpenAI.
-Setting Up Your Project:
+
+### Setting Up Your Project:
 
 ```
 git clone https://github.com/RaheesAhmed/assistant_with_function_calling.git
@@ -20,7 +17,7 @@ GO to the Directory:
 cd assistant_with_function_calling
 ```
 
-Install Packages:
+### Install Packages:
 
 ```
 npm install
@@ -68,6 +65,17 @@ Example response:
 
 ```
 {
-  "response": "Please provide your name and phone...."
+  "response": "Please provide your name and phone number so we can assist you further."
 }
 ```
+Error Handling
+If an error occurs, the API will return a JSON object with an error field containing the error message.
+
+Example error response:
+```
+{
+  "error": "An error occurred while processing your request."
+}
+
+```
+
