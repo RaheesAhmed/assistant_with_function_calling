@@ -1,13 +1,15 @@
-import fetch from "node-fetch";
-
 export const sendTestWebhook = async (userDetails) => {
+  console.log("User details before sending:", userDetails); // Log the user details before sending
+
   const webhookUrl =
-    "https://webhook.site/47fb90f3-1b69-4c95-8ba7-9d0803ca2431";
+    "https://hook.us1.make.com/xkc2perqyggk3s9kl4mgrys8zoibjijq";
   const data = {
-    message: "Request for human help",
+    message: "Request nake an appoiment",
     timestamp: new Date().toISOString(),
-    userDetails: userDetails, // Include user details in the payload
+    userDetails: userDetails,
   };
+
+  console.log("Sending test webhook with user details:", data);
 
   try {
     const response = await fetch(webhookUrl, {

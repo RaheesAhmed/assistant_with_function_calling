@@ -27,8 +27,11 @@ app.get("/", (req, res) => {
 
 // Route to handle chat requests
 app.post("/chat", async (req, res) => {
-  const { question, userDetails } = req.body;
+  let { question } = req.body;
+  // Extract user details from the question
+  const userDetails = extractUserDetailsFromQuestion(question);
 
+  console.log("Extracted User Details:", userDetails);
   console.log("User Details: ", question, userDetails);
 
   try {
@@ -39,7 +42,37 @@ app.post("/chat", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+function extractUserDetailsFromQuestion(question) {
+  const userDetails = {};
 
+  // Regex patterns
+  const namePattern = /name(?: is)?\s*[:\-]?\s*([A-Za-z\s]+)/i;
+  const emailPattern = /email(?: is)?\s*[:\-]?\s*([\w\.-]+@[\w\.-]+)/i;
+  const phonePattern =
+    /phone(?: number)?(?: is)?\s*[:\-]?\s*(\d{10}|\(\d{3}\)\s*\d{3}-\d{4})/i;
+  const datePattern = /date(?: is)?\s*[:\-]?\s*(\d{4}-\d{2}-\d{2})/i;
+
+  // Extracting details
+  const nameMatch = question.match(namePattern);
+  const emailMatch = question.match(emailPattern);
+  const phoneMatch = question.match(phonePattern);
+  const dateMatch = question.match(datePattern);
+
+  if (nameMatch) {
+    userDetails.name = nameMatch[1];
+  }
+  if (emailMatch) {
+    userDetails.email = emailMatch[1];
+  }
+  if (phoneMatch) {
+    userDetails.phone = phoneMatch[1];
+  }
+  if (dateMatch) {
+    userDetails.date = dateMatch[1];
+  }
+
+  return userDetails;
+}
 // Async function to  get existing assistant
 async function getOrCreateAssistant() {
   const assistantFilePath = "./assistant.json";
