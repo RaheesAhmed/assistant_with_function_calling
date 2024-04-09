@@ -35,13 +35,14 @@ app.post("/chat", async (req, res) => {
   console.log("User Details: ", question, userDetails);
 
   try {
-    const { response } = await chatWithAssistant(question, userDetails); // Destructure the response object
+    const response = await chatWithAssistant(question, userDetails); // Destructure the response object
     res.json({ response }); // Send the response directly
     console.log("Response: ", response);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
+
 function extractUserDetailsFromQuestion(question) {
   const userDetails = {};
 
@@ -50,8 +51,7 @@ function extractUserDetailsFromQuestion(question) {
   const emailPattern = /email(?: is)?\s*[:\-]?\s*([\w\.-]+@[\w\.-]+)/i;
   const phonePattern =
     /phone(?: number)?(?: is)?\s*[:\-]?\s*(\d{10}|\(\d{3}\)\s*\d{3}-\d{4})/i;
-  const datePattern =
-    /date(?: number)?(?: is)?\s*[:\-]?\s*(\d{10}|\(\d{3}\)\s*\d{3}-\d{4})/i;
+  const datePattern = /date(?: is)?\s*[:\-]?\s*(\d{1,2}\/\d{1,2}\/\d{4})/i;
 
   // Extracting details
   const nameMatch = question.match(namePattern);
