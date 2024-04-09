@@ -34,13 +34,3 @@ export const sendTestWebhook = async (userDetails) => {
     console.error("Failed to send test webhook with user details:", error);
   }
 };
-
-const userDetails = {
-  name: "John Doe",
-  email: "john@gmail.com",
-  phone: "1234567890",
-  date: "2022-12-31",
-};
-
-sendTestWebhook(userDetails);
-// Output: Webhook sent successfully
