@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      .product-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .see-options,
+      .follow {
+        padding: 8px 16px;
+        font-size: 14px;
+        border: none;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+      }
+
+      .see-options {
+        background-color: #e91e63;
+        color: white;
+        border-radius: 4px;
+      }
+
+      .follow {
+        background-color: transparent;
+        color: #333;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+
+      .follow .heart-icon {
+        color: #e91e63;
+      }
+
+      .social-icons {
+        display: flex;
+        gap: 8px;
+      }
+
+      .social-icon {
+        color: #333;
+        font-size: 14px;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+      }
+
+      .social-icon .fa {
+        margin-right: 4px;
+      }
+
+      .social-icon.facebook {
+        color: #3b5998;
+      }
+
+      .social-icon.twitter {
+        color: #1da1f2;
+      }
+
+      .social-icon.share {
+        color: #606060;
+      }
+
+      /* Optional: Add hover effects */
+      .see-options:hover {
+        background-color: #c2185b;
+      }
+
+      .social-icon:hover {
+        opacity: 0.7;
+      }
+    </style>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css"
+    />
+  </head>
+  <body>
+    <div class="product-actions">
+      <button class="see-options">SEE OPTIONS</button>
+      <button class="follow"><span class="heart-icon">♥</span> FOLLOW</button>
+      <div class="social-icons">
+        <a href="#" class="social-icon facebook"
+          ><i class="fa-brands fa-square-facebook"></i
+        ></a>
+        <a href="#" class="social-icon twitter"
+          ><i class="fa-brands fa-square-twitter"></i
+        ></a>
+        <a href="#" class="social-icon share"
+          ><i class="fa-solid fa-link"></i
+        ></a>
+      </div>
+    </div>
+  </body>
+</html>

@@ -50,7 +50,8 @@ function extractUserDetailsFromQuestion(question) {
   const emailPattern = /email(?: is)?\s*[:\-]?\s*([\w\.-]+@[\w\.-]+)/i;
   const phonePattern =
     /phone(?: number)?(?: is)?\s*[:\-]?\s*(\d{10}|\(\d{3}\)\s*\d{3}-\d{4})/i;
-  const datePattern = /date(?: is)?\s*[:\-]?\s*(\d{4}-\d{2}-\d{2})/i;
+  const datePattern =
+    /date(?: number)?(?: is)?\s*[:\-]?\s*(\d{10}|\(\d{3}\)\s*\d{3}-\d{4})/i;
 
   // Extracting details
   const nameMatch = question.match(namePattern);
