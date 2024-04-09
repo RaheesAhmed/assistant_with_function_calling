@@ -48,7 +48,7 @@ The request body should be a JSON object containing the following fields:
 
 `question`: The question to ask the chatbot.
 `userDetails`: An object containing user details. For example,
-`{ "name": "John Doe", "phoneNumber": "1234567890" }`.
+`{ "name": "John Doe", "phoneNumber": "1234567890","date":"2022/12/31" }`.
 
 Example request body:
 
@@ -68,14 +68,15 @@ Example response:
   "response": "Please provide your name and phone number so we can assist you further."
 }
 ```
+
 Error Handling
 If an error occurs, the API will return a JSON object with an error field containing the error message.
 
 Example error response:
+
 ```
 {
   "error": "An error occurred while processing your request."
 }
 
 ```
-

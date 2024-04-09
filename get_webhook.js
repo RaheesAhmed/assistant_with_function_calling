@@ -4,7 +4,7 @@ export const sendTestWebhook = async (userDetails) => {
   const webhookUrl =
     "https://hook.us1.make.com/xkc2perqyggk3s9kl4mgrys8zoibjijq";
   const data = {
-    message: "Request nake an appoiment",
+    message: "Request make an appoiment",
     timestamp: new Date().toISOString(),
     userDetails: userDetails,
   };
