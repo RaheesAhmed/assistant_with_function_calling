@@ -371,7 +371,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
         const data = await response.json();
         removeTypingAnimation();
-        appendMessage("bot", data.response);
+        appendMessage("bot", data);
       } catch (error) {
         console.error(error);
         removeTypingAnimation();

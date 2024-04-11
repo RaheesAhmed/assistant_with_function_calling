@@ -31,12 +31,12 @@ app.post("/chat", async (req, res) => {
   // Extract user details from the question
   const userDetails = extractUserDetailsFromQuestion(question);
 
-  console.log("Extracted User Details:", userDetails);
-  console.log("User Details: ", question, userDetails);
+  console.log("Extracted User Details:", { userDetails });
+  console.log("User Details: ", { question }, { userDetails });
 
   try {
     const response = await chatWithAssistant(question, userDetails); // Destructure the response object
-    res.json({ response }); // Send the response directly
+    res.json(response); // Send the response directly
     console.log("Response: ", response);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -53,11 +53,14 @@ function extractUserDetailsFromQuestion(question) {
     /phone(?: number)?(?: is)?\s*[:\-]?\s*(\d{10}|\(\d{3}\)\s*\d{3}-\d{4})/i;
   const datePattern = /date(?: is)?\s*[:\-]?\s*(\d{1,2}\/\d{1,2}\/\d{4})/i;
 
+  const timePattern = /time(?: is)?\s*[:\-]?\s*(\d{1,2}:\d{2}\s*(?:am|pm))/i;
+
   // Extracting details
   const nameMatch = question.match(namePattern);
   const emailMatch = question.match(emailPattern);
   const phoneMatch = question.match(phonePattern);
   const dateMatch = question.match(datePattern);
+  const timeMatch = question.match(timePattern);
 
   if (nameMatch) {
     userDetails.name = nameMatch[1];
@@ -70,6 +73,9 @@ function extractUserDetailsFromQuestion(question) {
   }
   if (dateMatch) {
     userDetails.date = dateMatch[1];
+  }
+  if (timeMatch) {
+    userDetails.time = timeMatch[1];
   }
 
   return userDetails;
