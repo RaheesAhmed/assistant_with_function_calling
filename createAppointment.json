@@ -1,0 +1,35 @@
+{
+  "type": "function",
+  "function":{
+    "name": "createAppointment",
+    "description": "Creates an appointment in the calendar if the time slot is available.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "dateTimeToCheck": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The starting date and time of the appointment in ISO 8601 format."
+        },
+        "summary": {
+          "type": "string",
+          "description": "A brief summary or title for the appointment."
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of the appointment."
+        },
+        "location": {
+          "type": "string",
+          "description": "The location of the appointment, can be a physical address or a virtual location."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The email address of the attendee to be added to the appointment."
+        }
+      },
+      "required": ["dateTimeToCheck", "summary", "description", "location", "email"]
+    }
+  }
+}

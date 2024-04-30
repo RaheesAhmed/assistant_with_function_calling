@@ -1,0 +1,18 @@
+{
+  "type": "function",
+  "function":{
+    "name": "checkDateTimeAvailability",
+    "description": "Checks if the specified date and time are available in the calendar.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "dateTimeToCheck": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time to check availability for, in ISO 8601 format."
+        }
+      },
+      "required": ["dateTimeToCheck"]
+    }
+  }
+}

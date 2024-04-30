@@ -5,6 +5,7 @@ import { promises as fsPromises } from "fs";
 import OpenAI from "openai";
 import dotenv from "dotenv";
 import { sendTestWebhook } from "./get_webhook.js";
+import { checkDateTimeAvailability } from "./calander.js";
 
 // Load environment variables from .env file
 dotenv.config();
@@ -13,7 +14,7 @@ dotenv.config();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const app = express();
-const port = 3000;
+const port = 5000;
 
 // Middleware to parse JSON bodies
 app.use(bodyParser.json());
@@ -80,6 +81,7 @@ function extractUserDetailsFromQuestion(question) {
 
   return userDetails;
 }
+
 // Async function to  get existing assistant
 async function getOrCreateAssistant() {
   const assistantFilePath = "./assistant.json";
@@ -149,8 +151,30 @@ async function chatWithAssistant(question, userDetails) {
       // Prepare the tool outputs
       const toolOutputs = [];
       for (const toolCall of toolCalls) {
+        if (toolCall.function.name === "checkDateTimeAvailability") {
+          const output = await checkDateTimeAvailability(userDetails);
+          toolOutputs.push({
+            tool_call_id: toolCall.id,
+            output: output,
+          });
+        }
+
+        if (toolCall.function.name === "createAppointment") {
+          const output = await createAppointment(
+            userDetails.date + " " + userDetails.time,
+            "Appointment",
+            "Meeting with the user",
+            userDetails.email
+          );
+          toolOutputs.push({
+            tool_call_id: toolCall.id,
+            output: output,
+          });
+        }
+
         if (toolCall.function.name === "sendTestWebhook") {
-          const output = await sendTestWebhook(userDetails);
+          const meetingLink = await createAppointment(userDetails);
+          const output = await sendTestWebhook(meetingLink);
           toolOutputs.push({
             tool_call_id: toolCall.id,
             output: output,

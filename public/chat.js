@@ -1,4 +1,4 @@
-const ServerAdd = "http://localhost:3000/chat";
+const ServerAdd = "http://localhost:5000/chat";
 
 document.addEventListener("DOMContentLoaded", function () {
   const styleElement = document.createElement("style");
@@ -370,8 +370,10 @@ document.addEventListener("DOMContentLoaded", function () {
           body: JSON.stringify({ question: query, userDetails: {} }), // Assume userDetails is an empty object for now
         });
         const data = await response.json();
+        console.log(data);
+        const botresponse = data.response;
         removeTypingAnimation();
-        appendMessage("bot", data);
+        appendMessage("bot", botresponse);
       } catch (error) {
         console.error(error);
         removeTypingAnimation();
@@ -436,7 +438,7 @@ document.addEventListener("DOMContentLoaded", function () {
     messageBubble.style.padding = "12px";
     messageBubble.style.borderRadius = "10px";
     messageBubble.style.maxWidth = "80%";
-    messageBubble.innerHTML = message.replace(/\n/g, "<br>");
+    messageBubble.innerHTML = message;
 
     if (sender === "user") {
       // For user messages, append the message bubble first, then the icon

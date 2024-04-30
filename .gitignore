@@ -4,3 +4,8 @@ local.js
 app.js
 send_email.js
 assistant.json
+auth.jsons
+calendar_auth.json
+auth.json
+clinetAuth.json
+googleAuth.json
