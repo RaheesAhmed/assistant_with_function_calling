@@ -1,0 +1,29 @@
+{
+    "name": "sendTestWebhook",
+    "description": "Send user details to a specified webhook URL",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "userDetails": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Name of the user"
+            },
+            "email": {
+              "type": "string",
+              "description": "Email of the user"
+            }
+          },
+          "required": [
+            "name",
+            "email"
+          ]
+        }
+      },
+      "required": [
+        "userDetails"
+      ]
+    }
+  }

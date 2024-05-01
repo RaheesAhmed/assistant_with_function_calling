@@ -4,8 +4,9 @@ import fs from "fs";
 import { promises as fsPromises } from "fs";
 import OpenAI from "openai";
 import dotenv from "dotenv";
+import { parse, isValid, formatISO } from "date-fns";
 import { sendTestWebhook } from "./get_webhook.js";
-import { checkDateTimeAvailability } from "./calander.js";
+import { checkDateTimeAvailability, setupMeeting } from "./calander.js";
 
 // Load environment variables from .env file
 dotenv.config();
@@ -32,6 +33,13 @@ app.post("/chat", async (req, res) => {
   // Extract user details from the question
   const userDetails = extractUserDetailsFromQuestion(question);
 
+  console.log(
+    "Checking availability for Date:",
+    userDetails.date,
+    "Time:",
+    userDetails.time
+  );
+
   console.log("Extracted User Details:", { userDetails });
   console.log("User Details: ", { question }, { userDetails });
 
@@ -47,37 +55,19 @@ app.post("/chat", async (req, res) => {
 function extractUserDetailsFromQuestion(question) {
   const userDetails = {};
 
-  // Regex patterns
-  const namePattern = /name(?: is)?\s*[:\-]?\s*([A-Za-z\s]+)/i;
-  const emailPattern = /email(?: is)?\s*[:\-]?\s*([\w\.-]+@[\w\.-]+)/i;
-  const phonePattern =
-    /phone(?: number)?(?: is)?\s*[:\-]?\s*(\d{10}|\(\d{3}\)\s*\d{3}-\d{4})/i;
-  const datePattern = /date(?: is)?\s*[:\-]?\s*(\d{1,2}\/\d{1,2}\/\d{4})/i;
-
-  const timePattern = /time(?: is)?\s*[:\-]?\s*(\d{1,2}:\d{2}\s*(?:am|pm))/i;
+  // Updated regex patterns to match the input format directly
+  const namePattern = /Name\s+([^ ]+ [^ ]+)/i; // Captures two words for first name and last name
+  const emailPattern = /email\s+([\w.-]+@[\w.-]+)/i;
+  const phonePattern = /phone\s+(\d+)/i;
+  const datePattern = /date\s+([0-9\/]+)/i; // Matches dates formatted as dd/mm/yyyy
+  const timePattern = /time\s+([0-9:]+ [AP]M)/i; // Matches times formatted as hh:mm AM/PM
 
   // Extracting details
-  const nameMatch = question.match(namePattern);
-  const emailMatch = question.match(emailPattern);
-  const phoneMatch = question.match(phonePattern);
-  const dateMatch = question.match(datePattern);
-  const timeMatch = question.match(timePattern);
-
-  if (nameMatch) {
-    userDetails.name = nameMatch[1];
-  }
-  if (emailMatch) {
-    userDetails.email = emailMatch[1];
-  }
-  if (phoneMatch) {
-    userDetails.phone = phoneMatch[1];
-  }
-  if (dateMatch) {
-    userDetails.date = dateMatch[1];
-  }
-  if (timeMatch) {
-    userDetails.time = timeMatch[1];
-  }
+  userDetails.name = question.match(namePattern)?.[1];
+  userDetails.email = question.match(emailPattern)?.[1];
+  userDetails.phone = question.match(phonePattern)?.[1];
+  userDetails.date = question.match(datePattern)?.[1];
+  userDetails.time = question.match(timePattern)?.[1];
 
   return userDetails;
 }
@@ -121,103 +111,111 @@ async function getOrCreateAssistant() {
 }
 
 async function chatWithAssistant(question, userDetails) {
+  console.log("Chat with assistant started...");
   try {
     const assistantDetails = await getOrCreateAssistant();
 
     const thread = await openai.beta.threads.create();
-
+    console.log("Thread Created...");
     await openai.beta.threads.messages.create(thread.id, {
       role: "user",
       content: question,
     });
-
+    console.log("Message Sent...");
     const run = await openai.beta.threads.runs.create(thread.id, {
       assistant_id: assistantDetails.assistantId,
     });
-
+    console.log("Run Created...");
     let runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+    console.log("Checking run Status...");
 
-    // Polling for run status
+    // Poll for run status
     while (runStatus.status === "in_progress") {
+      console.log("Polling for run status...");
       await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait for 2 seconds before checking again
       runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
     }
 
-    // Check if the run requires action (e.g., calling a function)
-    if (runStatus.status === "requires_action") {
-      const toolCalls =
-        runStatus.required_action.submit_tool_outputs.tool_calls;
+    if (
+      runStatus.status === "requires_action" &&
+      runStatus.required_action &&
+      runStatus.required_action.submit_tool_outputs
+    ) {
+      console.log("Handling Required Actions...");
+      const toolOutputs =
+        runStatus.required_action.submit_tool_outputs.tool_calls.map(
+          (toolCall) => {
+            const output = handleToolCall(toolCall, userDetails);
+            return {
+              tool_call_id: toolCall.id,
+              output: output,
+            };
+          }
+        );
 
-      // Prepare the tool outputs
-      const toolOutputs = [];
-      for (const toolCall of toolCalls) {
-        if (toolCall.function.name === "checkDateTimeAvailability") {
-          const output = await checkDateTimeAvailability(userDetails);
-          toolOutputs.push({
-            tool_call_id: toolCall.id,
-            output: output,
-          });
-        }
-
-        if (toolCall.function.name === "createAppointment") {
-          const output = await createAppointment(
-            userDetails.date + " " + userDetails.time,
-            "Appointment",
-            "Meeting with the user",
-            userDetails.email
-          );
-          toolOutputs.push({
-            tool_call_id: toolCall.id,
-            output: output,
-          });
-        }
-
-        if (toolCall.function.name === "sendTestWebhook") {
-          const meetingLink = await createAppointment(userDetails);
-          const output = await sendTestWebhook(meetingLink);
-          toolOutputs.push({
-            tool_call_id: toolCall.id,
-            output: output,
-          });
-        }
+      // Submit tool outputs if all are properly defined
+      if (toolOutputs.every((output) => output.output !== undefined)) {
+        await openai.beta.threads.runs.submitToolOutputs(thread.id, run.id, {
+          tool_outputs: toolOutputs,
+        });
+        console.log("Tool outputs submitted successfully.");
+      } else {
+        console.log("One or more tool outputs are undefined.");
       }
 
-      // Submit the tool outputs
-      await openai.beta.threads.runs.submitToolOutputs(thread.id, run.id, {
-        tool_outputs: toolOutputs,
-      });
-
-      // Wait for the run to be completed after submitting the tool outputs
+      // Continue polling until completion or another action is required
       do {
-        await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait for 2 seconds before checking again
+        await new Promise((resolve) => setTimeout(resolve, 2000));
         runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
       } while (runStatus.status === "in_progress");
     }
 
-    // Handle the final assistant response
+    // Process completed run
     if (runStatus.status === "completed") {
       const messages = await openai.beta.threads.messages.list(thread.id);
-      const lastMessageForRun = messages.data
-        .filter(
-          (message) => message.run_id === run.id && message.role === "assistant"
-        )
-        .pop();
+      const lastMessageForRun = messages.data.find(
+        (message) => message.run_id === run.id && message.role === "assistant"
+      );
 
-      if (lastMessageForRun) {
-        return { response: lastMessageForRun.content[0].text.value };
-      } else {
-        console.log("No response received from the assistant.");
-        return { response: "No response received from the assistant." };
-      }
+      return {
+        response: lastMessageForRun
+          ? lastMessageForRun.content[0].text.value
+          : "No response received from the assistant.",
+      };
     } else {
       return { response: "Assistant did not complete the request." };
     }
   } catch (error) {
-    console.error(error);
+    console.error("An error occurred while processing your request:", error);
     return { response: "An error occurred while processing your request." };
   }
 }
 
+function handleToolCall(toolCall, userDetails) {
+  switch (toolCall.function.name) {
+    case "checkDateTimeAvailability":
+      const result = checkDateTimeAvailability(
+        userDetails.date,
+        userDetails.time
+      );
+      return JSON.stringify({ error: result ? "Available" : "Not Available" });
+    case "createAppointment":
+      const appointmentLink = setupMeeting(
+        userDetails.date,
+        userDetails.time,
+        "Appointment",
+        "Meeting with Gill Shesapir",
+        userDetails.email
+      );
+      return JSON.stringify({
+        error: appointmentLink
+          ? "Appointment created"
+          : "Failed to create appointment",
+      });
+    default:
+      return JSON.stringify({ error: "Unhandled function call" });
+  }
+}
 // Start the server
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);

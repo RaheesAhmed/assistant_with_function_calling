@@ -1,6 +1,5 @@
 {
-  "type": "function",
-  "function":{
+  
     "name": "createAppointment",
     "description": "Creates an appointment in the calendar if the time slot is available.",
     "parameters": {
@@ -31,5 +30,5 @@
       },
       "required": ["dateTimeToCheck", "summary", "description", "location", "email"]
     }
-  }
+  
 }

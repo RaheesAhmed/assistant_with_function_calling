@@ -1,6 +1,5 @@
 {
-  "type": "function",
-  "function":{
+  
     "name": "checkDateTimeAvailability",
     "description": "Checks if the specified date and time are available in the calendar.",
     "parameters": {
@@ -14,5 +13,5 @@
       },
       "required": ["dateTimeToCheck"]
     }
-  }
+  
 }
