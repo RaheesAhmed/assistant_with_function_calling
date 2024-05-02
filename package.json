@@ -12,6 +12,7 @@
   "dependencies": {
     "@google-cloud/storage": "^7.10.2",
     "axios": "^1.6.8",
+    "cors": "^2.8.5",
     "csv-writer": "^1.6.0",
     "date-fns": "^3.6.0",
     "destroyer": "^0.0.0",

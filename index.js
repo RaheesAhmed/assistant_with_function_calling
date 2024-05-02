@@ -6,6 +6,7 @@ import OpenAI from "openai";
 import dotenv from "dotenv";
 import { parse, isValid, formatISO } from "date-fns";
 import { sendTestWebhook } from "./get_webhook.js";
+import cors from "cors";
 import { checkDateTimeAvailability, setupMeeting } from "./calander.js";
 
 // Load environment variables from .env file
@@ -14,8 +15,13 @@ dotenv.config();
 // Initialize OpenAI
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+const ASSISTANT_ID = process.env.ASSISTANT_ID;
+
 const app = express();
-const port = 5000;
+const port = 3000;
+
+// Middleware to enable CORS
+app.use(cors());
 
 // Middleware to parse JSON bodies
 app.use(bodyParser.json());
@@ -32,13 +38,6 @@ app.post("/chat", async (req, res) => {
   let { question } = req.body;
   // Extract user details from the question
   const userDetails = extractUserDetailsFromQuestion(question);
-
-  console.log(
-    "Checking availability for Date:",
-    userDetails.date,
-    "Time:",
-    userDetails.time
-  );
 
   console.log("Extracted User Details:", { userDetails });
   console.log("User Details: ", { question }, { userDetails });
@@ -84,7 +83,7 @@ async function getOrCreateAssistant() {
   } catch (error) {
     //Retrive assistant
     const assistant = await openai.beta.assistants.retrieve(
-      process.env.ASSISTANT_ID,
+      ASSISTANT_ID,
       "name",
       "model",
       "instructions",

@@ -1,4 +1,4 @@
-const ServerAdd = "http://localhost:5000/chat";
+const ServerAdd = "http://localhost:3000/chat";
 
 document.addEventListener("DOMContentLoaded", function () {
   const styleElement = document.createElement("style");
