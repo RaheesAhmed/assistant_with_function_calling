@@ -12,10 +12,14 @@ import { checkDateTimeAvailability, setupMeeting } from "./calander.js";
 // Load environment variables from .env file
 dotenv.config();
 
+// {
+//   "question": "Name Rahees,email raheesahmed256@gmail.com,phone 123456789,date 24/05/2024,time 10:00 PM"
+// }
+
 // Initialize OpenAI
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-const ASSISTANT_ID = process.env.ASSISTANT_ID;
+const assistantID = process.env.ASSISTANT_ID;
 
 const app = express();
 const port = 3000;
@@ -73,40 +77,23 @@ function extractUserDetailsFromQuestion(question) {
 
 // Async function to  get existing assistant
 async function getOrCreateAssistant() {
-  const assistantFilePath = "./assistant.json";
-  let assistantDetails;
-
   try {
-    // Check if the assistant.json file exists
-    const assistantData = await fsPromises.readFile(assistantFilePath, "utf8");
-    assistantDetails = JSON.parse(assistantData);
-  } catch (error) {
-    //Retrive assistant
-    const assistant = await openai.beta.assistants.retrieve(
-      ASSISTANT_ID,
-      "name",
-      "model",
-      "instructions",
-      "tools"
-    );
-
-    assistantDetails = {
+    // Retrieve the assistant details directly from the OpenAI API
+    const assistant = await openai.beta.assistants.retrieve(assistantID);
+    const assistantDetails = {
       assistantId: assistant.id,
       assistantName: assistant.name,
       assistantInstructions: assistant.instructions,
       assistantModel: assistant.model,
       assistantTools: assistant.tools,
-      response_format: { type: "json_object" },
     };
 
-    // Save the assistant details to assistant.json
-    await fsPromises.writeFile(
-      assistantFilePath,
-      JSON.stringify(assistantDetails, null, 2)
-    );
+    console.log("Assistant Details:", assistantDetails);
+    return assistantDetails;
+  } catch (error) {
+    console.error("Error retrieving the assistant:", error);
+    throw error; // Re-throw the error to be handled by the caller
   }
-
-  return assistantDetails;
 }
 
 async function chatWithAssistant(question, userDetails) {
@@ -152,14 +139,17 @@ async function chatWithAssistant(question, userDetails) {
           }
         );
 
+      // Log the final tool outputs
+      console.log("Final Tool Outputs:", JSON.stringify(toolOutputs));
+
       // Submit tool outputs if all are properly defined
-      if (toolOutputs.every((output) => output.output !== undefined)) {
+      if (toolOutputs.every((output) => typeof output.output === "string")) {
         await openai.beta.threads.runs.submitToolOutputs(thread.id, run.id, {
           tool_outputs: toolOutputs,
         });
         console.log("Tool outputs submitted successfully.");
       } else {
-        console.log("One or more tool outputs are undefined.");
+        console.log("One or more tool outputs are incorrectly formatted.");
       }
 
       // Continue polling until completion or another action is required
@@ -176,11 +166,8 @@ async function chatWithAssistant(question, userDetails) {
         (message) => message.run_id === run.id && message.role === "assistant"
       );
 
-      return {
-        response: lastMessageForRun
-          ? lastMessageForRun.content[0].text.value
-          : "No response received from the assistant.",
-      };
+      const response = lastMessageForRun.content[0].text.value;
+      return { response: response };
     } else {
       return { response: "Assistant did not complete the request." };
     }
