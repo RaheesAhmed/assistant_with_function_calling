@@ -74,20 +74,30 @@ export const checkDateTimeAvailability = async (
   return availableSlots;
 };
 
-// Function to create a calendar event
+// Function to create a calendar event with a limit on recursion for finding available slots
 export const createAppointment = async (
   dateTime,
   summary,
   description,
-  email
+  email,
+  attempt = 0,
+  maxAttempts = 10 // You can adjust the maxAttempts based on your requirement
 ) => {
   const isAvailable = await checkDateTimeAvailability(dateTime);
-  if (!isAvailable) {
+  if (!isAvailable && attempt < maxAttempts) {
     console.log(
       "Time slot not available, looking for the next available slot..."
     );
     const nextAttempt = addHours(dateTime, APPOINTMENT_DURATION_HOURS);
-    return createAppointment(nextAttempt, summary, description, email);
+    return createAppointment(
+      nextAttempt,
+      summary,
+      description,
+      email,
+      attempt + 1
+    );
+  } else if (attempt >= maxAttempts) {
+    throw new Error("No available slots found within the attempt limit.");
   }
 
   const event = {
@@ -126,6 +136,8 @@ export const setupMeeting = async (date, time, summary, description, email) => {
     console.log(
       `Meeting successfully scheduled, you can join using this link: ${bookingLink}`
     );
+
+    return bookingLink;
   } catch (error) {
     console.error("Failed to schedule the meeting:", error);
   }
@@ -194,5 +206,7 @@ export const sendMeetingDetails = async (
       return console.log(error);
     }
     console.log("Email sent: " + info.response);
+
+    return info.response;
   });
 };

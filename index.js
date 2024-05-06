@@ -88,7 +88,7 @@ async function getOrCreateAssistant() {
       assistantTools: assistant.tools,
     };
 
-    console.log("Assistant Details:", assistantDetails);
+    //console.log("Assistant Details:", assistantDetails);
     return assistantDetails;
   } catch (error) {
     console.error("Error retrieving the assistant:", error);
@@ -100,7 +100,6 @@ async function chatWithAssistant(question, userDetails) {
   console.log("Chat with assistant started...");
   try {
     const assistantDetails = await getOrCreateAssistant();
-
     const thread = await openai.beta.threads.create();
     console.log("Thread Created...");
     await openai.beta.threads.messages.create(thread.id, {
@@ -108,67 +107,25 @@ async function chatWithAssistant(question, userDetails) {
       content: question,
     });
     console.log("Message Sent...");
+
     const run = await openai.beta.threads.runs.create(thread.id, {
       assistant_id: assistantDetails.assistantId,
     });
     console.log("Run Created...");
-    let runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
-    console.log("Checking run Status...");
 
-    // Poll for run status
-    while (runStatus.status === "in_progress") {
-      console.log("Polling for run status...");
-      await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait for 2 seconds before checking again
-      runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
-    }
+    // Pass userDetails to handleRunProcess
+    let runStatus = await handleRunProcess(run, thread.id, userDetails);
+    console.log("Run processing complete with status:", runStatus.status);
 
-    if (
-      runStatus.status === "requires_action" &&
-      runStatus.required_action &&
-      runStatus.required_action.submit_tool_outputs
-    ) {
-      console.log("Handling Required Actions...");
-      const toolOutputs =
-        runStatus.required_action.submit_tool_outputs.tool_calls.map(
-          (toolCall) => {
-            const output = handleToolCall(toolCall, userDetails);
-            return {
-              tool_call_id: toolCall.id,
-              output: output,
-            };
-          }
-        );
-
-      // Log the final tool outputs
-      console.log("Final Tool Outputs:", JSON.stringify(toolOutputs));
-
-      // Submit tool outputs if all are properly defined
-      if (toolOutputs.every((output) => typeof output.output === "string")) {
-        await openai.beta.threads.runs.submitToolOutputs(thread.id, run.id, {
-          tool_outputs: toolOutputs,
-        });
-        console.log("Tool outputs submitted successfully.");
-      } else {
-        console.log("One or more tool outputs are incorrectly formatted.");
-      }
-
-      // Continue polling until completion or another action is required
-      do {
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-        runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
-      } while (runStatus.status === "in_progress");
-    }
-
-    // Process completed run
+    // Fetch and return the final message from the assistant
     if (runStatus.status === "completed") {
       const messages = await openai.beta.threads.messages.list(thread.id);
-      const lastMessageForRun = messages.data.find(
-        (message) => message.run_id === run.id && message.role === "assistant"
+      const lastMessage = messages.data.find(
+        (m) => m.run_id === run.id && m.role === "assistant"
       );
-
-      const response = lastMessageForRun.content[0].text.value;
-      return { response: response };
+      return { response: lastMessage.content[0].text.value };
     } else {
+      console.error("Run did not complete successfully:", runStatus);
       return { response: "Assistant did not complete the request." };
     }
   } catch (error) {
@@ -177,31 +134,70 @@ async function chatWithAssistant(question, userDetails) {
   }
 }
 
+async function handleRunProcess(run, threadId, userDetails) {
+  let runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id);
+  console.log("Checking run Status...");
+
+  // Poll for run status
+  while (
+    runStatus.status === "in_progress" ||
+    runStatus.status === "requires_action"
+  ) {
+    console.log("Polling for run status...");
+    if (
+      runStatus.status === "requires_action" &&
+      runStatus.required_action &&
+      runStatus.required_action.submit_tool_outputs
+    ) {
+      console.log("Handling Required Actions...");
+      await submitToolOutputs(runStatus, threadId, run.id, userDetails);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait for 2 seconds before checking again
+    runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id);
+  }
+  return runStatus;
+}
+
+async function submitToolOutputs(runStatus, threadId, runId, userDetails) {
+  const toolOutputs =
+    runStatus.required_action.submit_tool_outputs.tool_calls.map((toolCall) => {
+      const output = handleToolCall(toolCall, userDetails);
+      return {
+        tool_call_id: toolCall.id,
+        output: output,
+      };
+    });
+
+  await openai.beta.threads.runs.submitToolOutputs(threadId, runId, {
+    tool_outputs: toolOutputs,
+  });
+  console.log("Tool outputs submitted successfully.");
+}
+
 function handleToolCall(toolCall, userDetails) {
   switch (toolCall.function.name) {
     case "checkDateTimeAvailability":
-      const result = checkDateTimeAvailability(
+      const isAvailable = checkDateTimeAvailability(
         userDetails.date,
         userDetails.time
       );
-      return JSON.stringify({ error: result ? "Available" : "Not Available" });
+      return JSON.stringify({ available: isAvailable });
     case "createAppointment":
       const appointmentLink = setupMeeting(
         userDetails.date,
         userDetails.time,
         "Appointment",
-        "Meeting with Gill Shesapir",
+        "Meeting with Jane Doe",
         userDetails.email
       );
       return JSON.stringify({
-        error: appointmentLink
-          ? "Appointment created"
-          : "Failed to create appointment",
+        link: appointmentLink || "Failed to create appointment",
       });
     default:
       return JSON.stringify({ error: "Unhandled function call" });
   }
 }
+
 // Start the server
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
